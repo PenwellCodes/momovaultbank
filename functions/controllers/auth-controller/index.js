@@ -44,17 +44,16 @@ const loginUser = async (req, res) => {
     });
   }
 
-const accessToken = jwt.sign(
-  {
-    _id: checkUser._id,
-    userName: checkUser.userName,
-    userEmail: checkUser.userEmail,
-    role: checkUser.role,
-  },
-  process.env.JWT_SECRET,
-  { expiresIn: "120m" }
-);
-
+  const accessToken = jwt.sign(
+    {
+      _id: checkUser._id,
+      userName: checkUser.userName,
+      userEmail: checkUser.userEmail,
+      role: checkUser.role,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "120m" }
+  );
 
   res.status(200).json({
     success: true,

@@ -9,24 +9,38 @@ dotenv.config();
 const accessToken = require("./routes/TokenGeneration.js");
 const requestToPayRoutes = require("./routes/requesttopay.js");
 const apiUserRoutes = require("./routes/apiuser.js");
+const authRoutes = require("./routes/index.js");
+
+
+
+
 
 const app = express();
+const MONGO_URI = process.env.MONGO_URI;
 
 app.use(
   cors({
-    origin: true, // Allow all
+    origin: "http://localhost:5173", // ✅ your Vite/React frontend
     credentials: true,
     methods: ["GET", "POST", "DELETE", "PUT"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
+app.use(express.json());
 
+//database connection
+mongoose
+  .connect(MONGO_URI)
+  .then(() => console.log("mongodb is connected"))
+  .catch((e) => console.log(e));
 
 // Routes
 app.use("/momo", accessToken);
 app.use("/momo", requestToPayRoutes);
 app.use("/momo", apiUserRoutes);
+app.use("/auth", authRoutes);
+
 
 // Global error handler
 app.use((err, req, res, next) => {

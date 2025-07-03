@@ -1,36 +1,20 @@
-const mongoose = require("mongoose");
 
-const LectureSchema = new mongoose.Schema({
-  title: String,
-  videoUrl: String,
-  public_id: String,
-  freePreview: Boolean,
-});
+const mongoose = require('mongoose');
 
-const CourseSchema = new mongoose.Schema({
-  instructorId: String,
-  instructorName: String,
-  date: Date,
-  title: String,
-  category: String,
-  level: String,
-  primaryLanguage: String,
-  subtitle: String,
-  description: String,
-  image: String,
-  welcomeMessage: String,
-  pricing: Number,
-  objectives: String,
-  students: [
+const vaultSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  balance: { type: Number, default: 0 },
+  lockedDeposits: [
     {
-      studentId: String,
-      studentName: String,
-      studentEmail: String,
-      paidAmount: String,
+      amount: Number,
+      lockPeriodInDays: Number,
+      startDate: Date,
+      endDate: Date,
+      status: { type: String, enum: ['locked', 'unlocked', 'withdrawn-early'], default: 'locked' },
+      penaltyApplied: { type: Boolean, default: false },
     },
   ],
-  curriculum: [LectureSchema],
-  isPublised: Boolean,
+  createdAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model("Course", CourseSchema);
+module.exports = mongoose.model('Vault', vaultSchema);
