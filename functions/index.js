@@ -10,10 +10,9 @@ const accessToken = require("./routes/TokenGeneration.js");
 const requestToPayRoutes = require("./routes/requesttopay.js");
 const apiUserRoutes = require("./routes/apiuser.js");
 const authRoutes = require("./routes/index.js");
+const vaultRoutes = require("./routes/vault");
 
-
-
-
+const User = require("./models/User.js"); // ✅ Add your User model
 
 const app = express();
 const MONGO_URI = process.env.MONGO_URI;
@@ -29,7 +28,7 @@ app.use(
 
 app.use(express.json());
 
-//database connection
+// Database connection
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("mongodb is connected"))
@@ -40,6 +39,21 @@ app.use("/momo", accessToken);
 app.use("/momo", requestToPayRoutes);
 app.use("/momo", apiUserRoutes);
 app.use("/auth", authRoutes);
+app.use("/api", vaultRoutes);
+
+// ✅ NEW USER FETCH ROUTE
+app.get("/api/user/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("userEmail userName");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 
 
 // Global error handler
@@ -53,6 +67,3 @@ app.use((err, req, res, next) => {
 
 // Export Express app as Firebase Function
 exports.api = functions.https.onRequest(app);
-
-// For local testing, ensure Firebase emulator is started with --host 0.0.0.0
-// Example: firebase emulators:start --only functions --host 0.0.0.0
