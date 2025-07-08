@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const registerUser = async (req, res) => {
-  const { userName, userEmail, password, role } = req.body;
+  const { userName, userEmail, password, phoneNumber, role } = req.body; // ✅ include phoneNumber
 
   const existingUser = await User.findOne({
     $or: [{ userEmail }, { userName }],
@@ -20,6 +20,7 @@ const registerUser = async (req, res) => {
   const newUser = new User({
     userName,
     userEmail,
+    phoneNumber, // ✅ save phoneNumber
     role,
     password: hashPassword,
   });
@@ -64,6 +65,7 @@ const loginUser = async (req, res) => {
         _id: checkUser._id,
         userName: checkUser.userName,
         userEmail: checkUser.userEmail,
+        phoneNumber: checkUser.phoneNumber, // ✅ return phone number
         role: checkUser.role,
       },
     },

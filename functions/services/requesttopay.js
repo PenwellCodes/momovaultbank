@@ -4,6 +4,10 @@ const referenceIdManager = require('../middlewares/referenceManager.js');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 
+// Import models
+const Vault = require('../models/Vault');
+const LockedDeposit = require('../models/LockedDeposit');
+const Transaction = require('../models/Transaction');
 
 async function ensureMomoToken() {
   let token = momoTokenManager.getMomoToken();
@@ -31,6 +35,7 @@ async function ensureMomoToken() {
       throw new Error('Failed to generate Momo token');
     }
   }
+
   return token;
 }
 
@@ -60,19 +65,28 @@ exports.collect = async function (req, res) {
     const referenceId = uuidv4();
     referenceIdManager.setReferenceId(referenceId);
 
-    const { amount, phoneNumber, orderId, userId } = req.body;
+    const { amount, phoneNumber, orderId, userId, lockPeriodInDays } = req.body;
+
+    // Ensure MSISDN format
+    let formattedPhone = phoneNumber;
+    if (!formattedPhone.startsWith("268")) {
+      formattedPhone = "268" + formattedPhone;
+    }
 
     const body = {
       amount: String(amount),
-      currency: 'EUR', // Use 'SZL' for Eswatini
-      externalId: "externalId",
+      currency: 'EUR', // Or 'ZAR' depending on sandbox
+      externalId: orderId || uuidv4().replace(/-/g, '').slice(0, 24),
       payer: {
         partyIdType: "MSISDN",
-        partyId: phoneNumber
+        partyId: formattedPhone,
       },
       payerMessage: "Payment for services rendered",
       payeeNote: "Money collected",
     };
+
+    console.log(">  Sending request to:", `${momoBaseUrl}/v1_0/requesttopay/${referenceId}`);
+    console.log(">  Request Body:", body);
 
     const response = await axios.post(`${momoBaseUrl}/v1_0/requesttopay`, body, {
       headers: {
@@ -86,13 +100,37 @@ exports.collect = async function (req, res) {
     });
 
     if (response.status === 202) {
+      // Wait before checking status
       await new Promise(resolve => setTimeout(resolve, 5000));
       const transactionStatus = await checkTransactionStatus(referenceId, momoToken);
 
-  
+      // Save to Vault
+      let vault = await Vault.findOne({ userId });
+      if (!vault) {
+        vault = new Vault({ userId, balance: 0 });
+      }
+
+      vault.balance += parseFloat(amount);
+      await vault.save();
+
+      // Save locked deposit
+      await LockedDeposit.create({
+        userId,
+        amount: parseFloat(amount),
+        lockPeriodInDays: parseInt(lockPeriodInDays),
+        status: "locked",
+      });
+
+      // Save transaction
+      await Transaction.create({
+        userId,
+        type: "deposit",
+        amount: parseFloat(amount),
+        status: transactionStatus.status || "PENDING",
+      });
 
       return res.json({
-        message: "Transaction processed.",
+        message: "Transaction processed and recorded.",
         referenceId,
         financialTransactionId: transactionStatus.financialTransactionId,
         status: transactionStatus.status,

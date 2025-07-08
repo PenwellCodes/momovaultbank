@@ -11,6 +11,7 @@ const requestToPayRoutes = require("./routes/requesttopay.js");
 const apiUserRoutes = require("./routes/apiuser.js");
 const authRoutes = require("./routes/index.js");
 const vaultRoutes = require("./routes/vault");
+const adminRoutes = require("./routes/admin");
 
 const User = require("./models/User.js"); // ✅ Add your User model
 
@@ -40,6 +41,8 @@ app.use("/momo", requestToPayRoutes);
 app.use("/momo", apiUserRoutes);
 app.use("/auth", authRoutes);
 app.use("/api", vaultRoutes);
+app.use("/api/admin", adminRoutes);
+
 
 // ✅ NEW USER FETCH ROUTE
 app.get("/api/user/:id", async (req, res) => {
