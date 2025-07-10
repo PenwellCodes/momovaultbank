@@ -1,52 +1,49 @@
-const { momoBaseUrl } = require('../middlewares/momoConfig.js');
+const { momoCollectionBaseUrl } = require('../middlewares/momoConfig.js'); // ✅ Correct base URL
 const momoTokenManager = require('../middlewares/TokenManager.js');
+const axios = require('axios');
 
-// Get access token for COLLECTION
 exports.AccessTokenGeneration = async function (req, res) {
   try {
-    const apiUserId = process.env.API_USER;
-    const apiKey = process.env.API_KEY;
+    const apiUserId = process.env.Collection_API_USER;
+    const apiKey = process.env.Collection_API_KEY;
 
-    // Combine credentials and encode in base64
+    // Encode credentials
     const credentials = `${apiUserId}:${apiKey}`;
     const encodedCredentials = Buffer.from(credentials).toString('base64');
 
-    const response = await fetch(`${momoBaseUrl}/token/`, {
-      method: 'POST',
+    // Request token
+    const response = await axios.post(`${momoCollectionBaseUrl}/token/`, null, {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
-        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY,
+        'Ocp-Apim-Subscription-Key': process.env.Collection_SUBSCRIPTION_KEY,
         'Authorization': `Basic ${encodedCredentials}`,
       },
     });
 
-    const data = await response.json();
+    const { access_token } = response.data;
 
-    if (response.ok && data.access_token) {
-      // ✅ Save collection token only
-      momoTokenManager.setMomoCollectionToken(data.access_token);
+    if (access_token) {
+      momoTokenManager.setMomoCollectionToken(access_token); // ✅ Save token
     }
 
-    // Handle response based on context
+    // Return result
     if (res) {
-      if (response.ok) {
-        res.json({ message: 'Collection token retrieved successfully', data });
-      } else {
-        res.status(response.status).json({ message: 'Failed to retrieve token' });
-      }
+      res.status(200).json({
+        message: 'Collection token retrieved successfully',
+        data: response.data,
+      });
     } else {
-      if (response.ok) {
-        return { data };
-      } else {
-        throw new Error('Failed to retrieve token');
-      }
+      return { data: response.data };
     }
+
   } catch (error) {
-    console.error('Collection Token Error:', error);
+    console.error('Collection Token Error:', error.response?.data || error.message);
 
     if (res) {
-      res.status(500).json({ error: 'Internal server error. Please try again.' });
+      const status = error.response?.status || 500;
+      const message = error.response?.data || 'Internal server error';
+      res.status(status).json({ error: message });
     } else {
       throw error;
     }
