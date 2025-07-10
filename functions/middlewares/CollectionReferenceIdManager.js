@@ -1,5 +1,4 @@
 
-
 let globlalReferenceId = null;
 
 function setReferenceId(referenceId) {

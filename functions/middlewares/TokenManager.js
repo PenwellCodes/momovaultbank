@@ -1,14 +1,31 @@
-let momoToken = null;
+// TokenManager.js
 
-function setMomoToken(token) {
- momoToken = token;
+// Store tokens for each service separately
+let momoCollectionToken = null;
+let momoDisbursementToken = null;
+
+// ========== Collection Token ==========
+function setMomoCollectionToken(token) {
+  momoCollectionToken = token;
 }
 
-function getMomoToken() {
- return momoToken;
+function getMomoCollectionToken() {
+  return momoCollectionToken;
 }
 
+// ========== Disbursement Token ==========
+function setMomoDisbursementToken(token) {
+  momoDisbursementToken = token;
+}
+
+function getMomoDisbursementToken() {
+  return momoDisbursementToken;
+}
+
+// ========== Export all ==========
 module.exports = {
- setMomoToken,
- getMomoToken,
+  setMomoCollectionToken,
+  getMomoCollectionToken,
+  setMomoDisbursementToken,
+  getMomoDisbursementToken,
 };

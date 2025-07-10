@@ -1,6 +1,10 @@
 const momoHost = 'sandbox.momodeveloper.mtn.com';
-const momoBaseUrl = `https://${momoHost}/collection`;
+
+const momoCollectionBaseUrl = `https://${momoHost}/collection`;
+const momoDisbursementBaseUrl = `https://${momoHost}/disbursement`;
 
 module.exports = {
   momoHost,
-momoBaseUrl }
+  momoCollectionBaseUrl,
+  momoDisbursementBaseUrl
+};

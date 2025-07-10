@@ -1,4 +1,4 @@
-const { momoBaseUrl } = require('../middlewares/momoConfig.js');
+const { momoCollectionBaseUrl } = require('../middlewares/momoConfig.js'); // ✅ FIXED
 const momoTokenManager = require('../middlewares/TokenManager.js');
 const referenceIdManager = require('../middlewares/referenceManager.js');
 const { v4: uuidv4 } = require('uuid');
@@ -10,7 +10,7 @@ const LockedDeposit = require('../models/LockedDeposit');
 const Transaction = require('../models/Transaction');
 
 async function ensureMomoToken() {
-  let token = momoTokenManager.getMomoToken();
+  let token = momoTokenManager.getMomoCollectionToken(); // ✅ FIXED
   console.log('Current token:', token);
 
   if (!token) {
@@ -20,7 +20,7 @@ async function ensureMomoToken() {
     const encodedCredentials = Buffer.from(credentials).toString('base64');
 
     try {
-      const response = await axios.post(`${momoBaseUrl}/momo/generate-token`, null, {
+      const response = await axios.post(`${momoCollectionBaseUrl}/token/`, null, {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache',
@@ -29,7 +29,7 @@ async function ensureMomoToken() {
         },
       });
       token = response.data.access_token;
-      momoTokenManager.setMomoToken(token);
+      momoTokenManager.setMomoCollectionToken(token); // ✅ FIXED
     } catch (error) {
       console.error("Token Generation Error:", error.response?.data || error.message);
       throw new Error('Failed to generate Momo token');
@@ -41,7 +41,7 @@ async function ensureMomoToken() {
 
 async function checkTransactionStatus(referenceId, momoToken) {
   try {
-    const response = await axios.get(`${momoBaseUrl}/v1_0/requesttopay/${referenceId}`, {
+    const response = await axios.get(`${momoCollectionBaseUrl}/v1_0/requesttopay/${referenceId}`, {
       headers: {
         'Authorization': `Bearer ${momoToken}`,
         'X-Target-Environment': process.env.TARGET_ENVIRONMENT,
@@ -67,15 +67,11 @@ exports.collect = async function (req, res) {
 
     const { amount, phoneNumber, orderId, userId, lockPeriodInDays } = req.body;
 
-    // Ensure MSISDN format
-    let formattedPhone = phoneNumber;
-    if (!formattedPhone.startsWith("268")) {
-      formattedPhone = "268" + formattedPhone;
-    }
+    let formattedPhone = phoneNumber.startsWith("268") ? phoneNumber : "268" + phoneNumber;
 
     const body = {
       amount: String(amount),
-      currency: 'EUR', // Or 'ZAR' depending on sandbox
+      currency: 'EUR',
       externalId: orderId || uuidv4().replace(/-/g, '').slice(0, 24),
       payer: {
         partyIdType: "MSISDN",
@@ -85,10 +81,10 @@ exports.collect = async function (req, res) {
       payeeNote: "Money collected",
     };
 
-    console.log(">  Sending request to:", `${momoBaseUrl}/v1_0/requesttopay/${referenceId}`);
-    console.log(">  Request Body:", body);
+    console.log("> Sending request to:", `${momoCollectionBaseUrl}/v1_0/requesttopay/${referenceId}`);
+    console.log("> Request Body:", body);
 
-    const response = await axios.post(`${momoBaseUrl}/v1_0/requesttopay`, body, {
+    const response = await axios.post(`${momoCollectionBaseUrl}/v1_0/requesttopay`, body, {
       headers: {
         'Authorization': `Bearer ${momoToken}`,
         'X-Reference-Id': referenceId,
@@ -100,11 +96,9 @@ exports.collect = async function (req, res) {
     });
 
     if (response.status === 202) {
-      // Wait before checking status
       await new Promise(resolve => setTimeout(resolve, 5000));
       const transactionStatus = await checkTransactionStatus(referenceId, momoToken);
 
-      // Save to Vault
       let vault = await Vault.findOne({ userId });
       if (!vault) {
         vault = new Vault({ userId, balance: 0 });
@@ -113,7 +107,6 @@ exports.collect = async function (req, res) {
       vault.balance += parseFloat(amount);
       await vault.save();
 
-      // Save locked deposit
       await LockedDeposit.create({
         userId,
         amount: parseFloat(amount),
@@ -121,7 +114,6 @@ exports.collect = async function (req, res) {
         status: "locked",
       });
 
-      // Save transaction
       await Transaction.create({
         userId,
         type: "deposit",
@@ -136,26 +128,14 @@ exports.collect = async function (req, res) {
         status: transactionStatus.status,
       });
     } else {
-      const statusCode = response.status;
-      const errorDetails = response.data || 'No response body';
-
-      console.error("Request to pay failed:");
-      console.log("Status Code:", statusCode);
-      console.log("Headers:", response.headers);
-      console.log("Error Body:", errorDetails);
-
-      return res.status(statusCode).json({
+      return res.status(response.status).json({
         error: 'Request to pay failed',
-        details: typeof errorDetails === 'object'
-          ? JSON.stringify(errorDetails, null, 2)
-          : errorDetails
+        details: response.data || 'No response body',
       });
     }
   } catch (err) {
     const status = err.response?.status || 500;
     const errorDetails = err.response?.data || err.message;
-
-    console.error("MoMo API Error:", errorDetails);
 
     res.status(status).json({
       error: 'Transaction failed',

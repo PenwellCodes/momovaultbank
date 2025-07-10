@@ -6,12 +6,23 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 dotenv.config();
 
+// Collection routes
 const accessToken = require("./routes/TokenGeneration.js");
 const requestToPayRoutes = require("./routes/requesttopay.js");
 const apiUserRoutes = require("./routes/apiuser.js");
 const authRoutes = require("./routes/index.js");
 const vaultRoutes = require("./routes/vault");
 const adminRoutes = require("./routes/admin");
+
+//Disbursement routes
+
+// Import mobile money routes
+const Token = require('./Routes/momo-routes/TokenGeneration.js');
+const transfer = require('./Routes/momo-routes/transfer.js');
+const GetTransferStatus = require('./Routes/momo-routes/GetTrannsferstatus.js');
+const ValidateAccountHolder = require('./Routes/momo-routes/ValidateAccountHolder.js');
+const GetAccBalanceCurrency = require('./Routes/momo-routes/GetAccBalanceCurrency.js');
+const Gtetransactionhistory = require('./Routes/momo-routes/GetTransactionHistory.js');
 
 const User = require("./models/User.js"); // ✅ Add your User model
 
@@ -35,13 +46,26 @@ mongoose
   .then(() => console.log("mongodb is connected"))
   .catch((e) => console.log(e));
 
-// Routes
+// Collection Routes
 app.use("/momo", accessToken);
 app.use("/momo", requestToPayRoutes);
 app.use("/momo", apiUserRoutes);
 app.use("/auth", authRoutes);
 app.use("/api", vaultRoutes);
 app.use("/api/admin", adminRoutes);
+
+// Disbursement Routes
+
+app.use("/momo-api", Token);
+app.use("/momo-api", transfer);
+app.use("/momo-api", GetTransferStatus);
+app.use("/momo-api", ValidateAccountHolder);
+app.use("/momo-api", GetAccBalanceCurrency);
+app.use("/momo-api", Gtetransactionhistory);
+
+
+
+
 
 
 // ✅ NEW USER FETCH ROUTE

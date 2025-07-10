@@ -1,7 +1,7 @@
-const { momoBaseUrl } = require('../middlewares/momoConfig.js');
-const momoTokenManager = require('../middlewares/TokenManager.js');
+const { momoBaseUrl } = require('../../middlewares/momoConfig');
+const momoTokenManager = require('../../middlewares/TokenManager');
 
-// Get access token for COLLECTION
+// Get access token for DISBURSEMENT
 exports.AccessTokenGeneration = async function (req, res) {
   try {
     const apiUserId = process.env.API_USER;
@@ -24,26 +24,26 @@ exports.AccessTokenGeneration = async function (req, res) {
     const data = await response.json();
 
     if (response.ok && data.access_token) {
-      // ✅ Save collection token only
-      momoTokenManager.setMomoCollectionToken(data.access_token);
+      // ✅ Save disbursement token only
+      momoTokenManager.setMomoDisbursementToken(data.access_token);
     }
 
-    // Handle response based on context
+    // Response handling
     if (res) {
       if (response.ok) {
-        res.json({ message: 'Collection token retrieved successfully', data });
+        res.json({ message: 'Disbursement token retrieved successfully', data });
       } else {
-        res.status(response.status).json({ message: 'Failed to retrieve token' });
+        res.status(response.status).json({ message: 'Failed to retrieve disbursement token' });
       }
     } else {
       if (response.ok) {
         return { data };
       } else {
-        throw new Error('Failed to retrieve token');
+        throw new Error('Failed to retrieve disbursement token');
       }
     }
   } catch (error) {
-    console.error('Collection Token Error:', error);
+    console.error('Disbursement Token Error:', error);
 
     if (res) {
       res.status(500).json({ error: 'Internal server error. Please try again.' });
