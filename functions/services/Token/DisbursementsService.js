@@ -4,8 +4,8 @@ const momoTokenManager = require('../../middlewares/TokenManager');
 // Get access token for DISBURSEMENT
 exports.AccessTokenGeneration = async function (req, res) {
   try {
-    const apiUserId = process.env.API_USER;
-    const apiKey = process.env.API_KEY;
+    const apiUserId = process.env.Disbursement_API_USER;
+    const apiKey = process.env.Disbursement_API_KEY;
 
     // Combine credentials and encode in base64
     const credentials = `${apiUserId}:${apiKey}`;
@@ -16,7 +16,7 @@ exports.AccessTokenGeneration = async function (req, res) {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
-        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY,
+        'Ocp-Apim-Subscription-Key': process.env.Disbursement_SUBSCRIPTION_KEY,
         'Authorization': `Basic ${encodedCredentials}`,
       },
     });

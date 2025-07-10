@@ -14,8 +14,8 @@ async function ensureMomoToken() {
   console.log('Current token:', token);
 
   if (!token) {
-    const apiUserId = process.env.API_USER;
-    const apiKey = process.env.API_KEY;
+    const apiUserId = process.env.Collection_API_USER;
+    const apiKey = process.env.Collection_API_KEY;
     const credentials = `${apiUserId}:${apiKey}`;
     const encodedCredentials = Buffer.from(credentials).toString('base64');
 
@@ -24,7 +24,7 @@ async function ensureMomoToken() {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache',
-          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY,
+          'Ocp-Apim-Subscription-Key': process.env.Collection_SUBSCRIPTION_KEY,
           'Authorization': `Basic ${encodedCredentials}`,
         },
       });
@@ -45,7 +45,7 @@ async function checkTransactionStatus(referenceId, momoToken) {
       headers: {
         'Authorization': `Bearer ${momoToken}`,
         'X-Target-Environment': process.env.TARGET_ENVIRONMENT,
-        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY,
+        'Ocp-Apim-Subscription-Key': process.env.Collection_SUBSCRIPTION_KEY,
       },
     });
     return response.data;
@@ -90,7 +90,7 @@ exports.collect = async function (req, res) {
         'X-Reference-Id': referenceId,
         'X-Target-Environment': process.env.TARGET_ENVIRONMENT,
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
+        'Ocp-Apim-Subscription-Key': process.env.Collection_SUBSCRIPTION_KEY
       },
       validateStatus: () => true
     });
