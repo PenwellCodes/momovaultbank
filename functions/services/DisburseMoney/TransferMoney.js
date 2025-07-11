@@ -1,65 +1,60 @@
-const { momoDisbursementBaseUrl } = require('../../middlewares/momoConfig.js'); // ✅ FIXED
-const momoTokenManager = require('../../middlewares/TokenManager.js');
-const referenceIdManager = require('../../middlewares/DisbursementReferenceIdManager.js');
-const transactionController = require('./SaveTransaction.js');
+const Vault = require('../../models/Vault');
+const LockedDeposit = require('../../models/LockedDeposit');
+const Transaction = require('../../models/Transaction');
+const momoTokenManager = require('../../middlewares/TokenManager');
+const { momoDisbursementBaseUrl } = require('../../middlewares/momoConfig');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 
-async function ensureMomoToken() {
-  let token = momoTokenManager.getMomoDisbursementToken(); // ✅ FIXED
-  if (!token) {
-    const apiUserId = process.env.DISBURSEMENT_API_USER;
-    const apiKey = process.env.DISBURSEMENT_API_KEY;
-    const credentials = `${apiUserId}:${apiKey}`;
-    const encodedCredentials = Buffer.from(credentials).toString('base64');
+exports.withdraw = async function (req, res) {
+  const userId = req.user._id;
+  const { phoneNumber, amount } = req.body;
 
-    try {
-      const response = await axios.post(`${momoDisbursementBaseUrl}/token/`, null, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'Ocp-Apim-Subscription-Key': process.env.DISBURSEMENT_SUBSCRIPTION_KEY,
-          'Authorization': `Basic ${encodedCredentials}`,
-        },
-      });
-
-      token = response.data.access_token;
-      momoTokenManager.setMomoDisbursementToken(token); // ✅ FIXED
-    } catch (error) {
-      console.error("Token generation error:", error.response?.data || error.message);
-      throw new Error('Failed to generate MoMo token');
+  try {
+    const vault = await Vault.findOne({ userId });
+    if (!vault || vault.balance < amount) {
+      return res.status(400).json({ error: 'Insufficient vault balance' });
     }
-  }
-  return token;
-}
 
-async function checkTransactionStatus(referenceId, momoToken) {
-  try {
-    const response = await axios.get(`${momoDisbursementBaseUrl}/v1_0/transfer/${referenceId}`, {
-      headers: {
-        'Authorization': `Bearer ${momoToken}`,
-        'X-Target-Environment': process.env.TARGET_ENVIRONMENT,
-        'Ocp-Apim-Subscription-Key': process.env.DISBURSEMENT_SUBSCRIPTION_KEY,
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Transaction status fetch failed:", error.response?.data || error.message);
-    return { error: "Failed to fetch transaction status" };
-  }
-}
+    const deposits = await LockedDeposit.find({ userId, status: 'locked' });
 
-exports.transfer = async function (req, res) {
-  try {
-    const momoToken = await ensureMomoToken();
-    if (!momoToken) return res.status(401).json({ error: "No MoMo access token available" });
+    let totalWithdrawable = 0;
+    let penalties = 0;
+    const now = new Date();
+
+    for (const deposit of deposits) {
+      const depositTime = new Date(deposit.createdAt);
+      const hoursSinceDeposit = (now - depositTime) / (1000 * 60 * 60);
+      const lockPeriodInHours = deposit.lockPeriodInDays * 24;
+
+      if (hoursSinceDeposit < 24) continue; // skip if less than 24hrs
+
+      totalWithdrawable += deposit.amount;
+
+      const isEarlyWithdrawal = hoursSinceDeposit < lockPeriodInHours;
+
+      if (isEarlyWithdrawal && deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
+        penalties += deposit.amount * 0.1; // 10% penalty
+      }
+
+      deposit.status = 'unlocked';
+      await deposit.save();
+    }
+
+    if (totalWithdrawable < amount) {
+      return res.status(400).json({ error: 'Insufficient unlocked funds to withdraw this amount' });
+    }
+
+    const momoToken = momoTokenManager.getMomoDisbursementToken();
+    if (!momoToken) return res.status(401).json({ error: "No MoMo token available" });
 
     const referenceId = uuidv4();
-    referenceIdManager.setReferenceId(referenceId);
+    const totalDeduction = parseFloat(amount) + 5 + penalties;
 
-    const { amount, phoneNumber, payerMessage, employeeName, image } = req.body;
+    vault.balance -= totalDeduction;
+    await vault.save();
 
-    let formattedPhone = phoneNumber.startsWith("268") ? phoneNumber : "268" + phoneNumber;
+    const formattedPhone = phoneNumber.startsWith("268") ? phoneNumber : "268" + phoneNumber;
 
     const body = {
       amount: String(amount),
@@ -67,14 +62,11 @@ exports.transfer = async function (req, res) {
       externalId: uuidv4().replace(/-/g, '').slice(0, 24),
       payee: {
         partyIdType: "MSISDN",
-        partyId: formattedPhone
+        partyId: formattedPhone,
       },
-      payerMessage,
-      payeeNote: "Salary paid",
+      payerMessage: "Withdrawal from MoMoVault",
+      payeeNote: "Vault funds",
     };
-
-    console.log("> Sending to:", `${momoDisbursementBaseUrl}/v1_0/transfer/${referenceId}`);
-    console.log("> Body:", body);
 
     const response = await axios.post(`${momoDisbursementBaseUrl}/v1_0/transfer/${referenceId}`, body, {
       headers: {
@@ -88,44 +80,37 @@ exports.transfer = async function (req, res) {
     });
 
     if (response.status === 202) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      const transactionStatus = await checkTransactionStatus(referenceId, momoToken);
+      await Transaction.create({
+        userId,
+        type: "withdraw",
+        amount: parseFloat(amount),
+        status: "PENDING",
+        fee: 5,
+        penalty: penalties,
+      });
 
-      const result = {
-        message: "Transfer initiated successfully.",
+      return res.json({
+        message: "Withdrawal initiated successfully.",
+        withdrawnAmount: amount,
+        flatFee: 5,
+        penalty: penalties,
+        totalDeducted: totalDeduction,
         referenceId,
-        financialTransactionId: transactionStatus.financialTransactionId,
-        status: transactionStatus.status,
-      };
-
-      console.log("> Transfer Result:", result);
-      res.json(result);
-
-      const transactionData = {
-        date: new Date(),
-        employeeName,
-        amountPaid: amount,
-        paymentStatus: transactionStatus.status || 'pending',
-        phoneNumber,
-        image,
-        userId: req.user?._id || null,
-      };
-
-      await transactionController.saveTransaction(transactionData, req.user?._id || null);
+      });
     } else {
-      console.error("Transfer failed:", response.data);
-      res.status(response.status).json({
+      return res.status(response.status).json({
         error: 'Transfer failed',
         details: response.data,
       });
     }
+
   } catch (err) {
     const status = err.response?.status || 500;
     const data = err.response?.data || err.message;
-    console.error("MoMo Error:", data);
 
-    res.status(status).json({
-      error: 'Transfer failed',
+    console.error("Withdrawal error:", data);
+    return res.status(status).json({
+      error: 'Withdrawal failed',
       details: typeof data === 'object' ? JSON.stringify(data, null, 2) : data,
     });
   }

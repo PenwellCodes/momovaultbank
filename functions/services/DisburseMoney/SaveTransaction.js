@@ -1,4 +1,4 @@
-const Transaction = require('../../../Models/Transaction.js');
+const Transaction = require('../../models/Transaction');
 
 // Save the transaction to the database
 exports.saveTransaction = async function (transactionData, userId) {
