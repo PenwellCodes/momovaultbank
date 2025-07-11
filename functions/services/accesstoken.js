@@ -4,8 +4,8 @@ const axios = require('axios');
 
 exports.AccessTokenGeneration = async function (req, res) {
   try {
-    const apiUserId = process.env.Collection_API_USER;
-    const apiKey = process.env.Collection_API_KEY;
+    const apiUserId = process.env.COLLECTION_API_USER;
+    const apiKey = process.env.COLLECTION_API_KEY;
 
     // Encode credentials
     const credentials = `${apiUserId}:${apiKey}`;
@@ -16,7 +16,7 @@ exports.AccessTokenGeneration = async function (req, res) {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
-        'Ocp-Apim-Subscription-Key': process.env.Collection_SUBSCRIPTION_KEY,
+        'Ocp-Apim-Subscription-Key': process.env.COLLECTION_SUBSCRIPTION_KEY,
         'Authorization': `Basic ${encodedCredentials}`,
       },
     });

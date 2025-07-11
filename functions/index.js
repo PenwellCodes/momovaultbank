@@ -17,12 +17,11 @@ const adminRoutes = require("./routes/admin");
 //Disbursement routes
 
 // Import mobile money routes
-const Token = require('./Routes/momo-routes/TokenGeneration.js');
-const transfer = require('./Routes/momo-routes/transfer.js');
-const GetTransferStatus = require('./Routes/momo-routes/GetTrannsferstatus.js');
-const ValidateAccountHolder = require('./Routes/momo-routes/ValidateAccountHolder.js');
-const GetAccBalanceCurrency = require('./Routes/momo-routes/GetAccBalanceCurrency.js');
-const Gtetransactionhistory = require('./Routes/momo-routes/GetTransactionHistory.js');
+const Token = require('./routes/momo-routes/TokenGeneration.js');
+const transfer = require('./routes/momo-routes/transfer.js');
+const GetTransferStatus = require('./routes/momo-routes/GetTrannsferstatus.js');
+const GetAccBalanceCurrency = require('./routes/momo-routes/GetAccBalanceCurrency.js');
+const Gtetransactionhistory = require('./routes/momo-routes/GetTransactionHistory.js');
 
 const User = require("./models/User.js"); // ✅ Add your User model
 
@@ -59,7 +58,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/momo-api", Token);
 app.use("/momo-api", transfer);
 app.use("/momo-api", GetTransferStatus);
-app.use("/momo-api", ValidateAccountHolder);
+
 app.use("/momo-api", GetAccBalanceCurrency);
 app.use("/momo-api", Gtetransactionhistory);
 

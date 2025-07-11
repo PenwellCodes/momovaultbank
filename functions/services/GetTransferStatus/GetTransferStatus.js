@@ -25,7 +25,7 @@ exports.GetTransferStatus = async function (req, res) {
         'X-Target-Environment': process.env.TARGET_ENVIRONMENT,
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
-        'Ocp-Apim-Subscription-Key': process.env.Disbursement_SUBSCRIPTION_KEY, // ✅ Make sure this key exists in .env
+        'Ocp-Apim-Subscription-Key': process.env.DISBURSEMENT_SUBSCRIPTION_KEY, // ✅ Make sure this key exists in .env
       },
     });
 

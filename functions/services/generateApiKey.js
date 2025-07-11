@@ -17,7 +17,7 @@ const generateApiKey = async (req, res) => {
       {
         headers: {
           'Cache-Control': 'no-cache',
-          'Ocp-Apim-Subscription-Key': process.env.Collection_SUBSCRIPTION_KEY
+          'Ocp-Apim-Subscription-Key': process.env.COLLECTION_SUBSCRIPTION_KEY
         }
       }
     );

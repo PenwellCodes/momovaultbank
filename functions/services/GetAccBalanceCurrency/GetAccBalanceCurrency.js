@@ -15,7 +15,7 @@ exports.BalanceCurrency = async function (req, res) {
         'Authorization': `Bearer ${momoToken}`,
         'X-Target-Environment': process.env.TARGET_ENVIRONMENT,
         'Cache-Control': 'no-cache',
-        'Ocp-Apim-Subscription-Key': process.env.Disbursement_SUBSCRIPTION_KEY,
+        'Ocp-Apim-Subscription-Key': process.env.DISBURSEMENT_SUBSCRIPTION_KEY,
       },
     });
 
