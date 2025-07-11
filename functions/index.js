@@ -18,7 +18,7 @@ const adminRoutes = require("./routes/admin-routes/admin.js");
 
 // Import mobile money routes
 const Token = require('./routes/momo-disburse-routes/DisburseTokenGeneration.js');
-const transfer = require('./routes/momo-disburse-routes/transfer.js');
+// const transfer = require('./routes/momo-disburse-routes/transfer.js');
 const GetTransferStatus = require('./routes/momo-disburse-routes/GetTrannsferstatus.js');
 const GetAccBalanceCurrency = require('./routes/momo-disburse-routes/GetAccBalanceCurrency.js');
 const Gtetransactionhistory = require('./routes/momo-disburse-routes/GetTransactionHistory.js');
@@ -56,7 +56,7 @@ app.use("/api/admin", adminRoutes);
 // Disbursement Routes
 
 app.use("/momo-api", Token);
-app.use("/momo-api", transfer);
+// app.use("/momo-api", transfer);
 app.use("/momo-api", GetTransferStatus);
 
 app.use("/momo-api", GetAccBalanceCurrency);
