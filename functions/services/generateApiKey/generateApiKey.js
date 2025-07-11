@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { momoHost } = require('../middlewares/momoConfig');
+const { momoHost } = require('../../middlewares/momoConfig');
 
 const generateApiKey = async (req, res) => {
   try {

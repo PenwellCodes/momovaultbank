@@ -1,5 +1,5 @@
 
-const Transaction = require('../models/Transaction');
+const Transaction = require('../../models/Transaction');
 
 async function getTransactionsForUser(userId) {
   const transactions = await Transaction.find({ userId }).sort({ createdAt: -1 });

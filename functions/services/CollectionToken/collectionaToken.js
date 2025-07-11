@@ -1,5 +1,5 @@
-const { momoCollectionBaseUrl } = require('../middlewares/momoConfig.js'); // ✅ Correct base URL
-const momoTokenManager = require('../middlewares/TokenManager.js');
+const { momoCollectionBaseUrl } = require('../../middlewares/momoConfig.js'); // ✅ Correct base URL
+const momoTokenManager = require('../../middlewares/TokenManager.js');
 const axios = require('axios');
 
 exports.AccessTokenGeneration = async function (req, res) {

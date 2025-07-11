@@ -7,21 +7,21 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 // Collection routes
-const accessToken = require("./routes/TokenGeneration.js");
-const requestToPayRoutes = require("./routes/requesttopay.js");
-const apiUserRoutes = require("./routes/apiuser.js");
-const authRoutes = require("./routes/index.js");
-const vaultRoutes = require("./routes/vault");
-const adminRoutes = require("./routes/admin");
+const accessToken = require("./routes/collection-routes/collectiontokengeneration");
+const requestToPayRoutes = require("./routes/collection-routes/requesttopay.js");
+const apiUserRoutes = require("./routes/create-apiuser-routes/apiuser.js");
+const authRoutes = require("./routes/auth-routes/index.js");
+const vaultRoutes = require("./routes/vault-routes/vault.js");
+const adminRoutes = require("./routes/admin-routes/admin.js");
 
 //Disbursement routes
 
 // Import mobile money routes
-const Token = require('./routes/momo-routes/TokenGeneration.js');
-const transfer = require('./routes/momo-routes/transfer.js');
-const GetTransferStatus = require('./routes/momo-routes/GetTrannsferstatus.js');
-const GetAccBalanceCurrency = require('./routes/momo-routes/GetAccBalanceCurrency.js');
-const Gtetransactionhistory = require('./routes/momo-routes/GetTransactionHistory.js');
+const Token = require('./routes/momo-disburse-routes/TokenGeneration.js');
+const transfer = require('./routes/momo-disburse-routes/transfer.js');
+const GetTransferStatus = require('./routes/momo-disburse-routes/GetTrannsferstatus.js');
+const GetAccBalanceCurrency = require('./routes/momo-disburse-routes/GetAccBalanceCurrency.js');
+const Gtetransactionhistory = require('./routes/momo-disburse-routes/GetTransactionHistory.js');
 
 const User = require("./models/User.js"); // ✅ Add your User model
 

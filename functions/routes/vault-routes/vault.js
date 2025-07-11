@@ -1,6 +1,6 @@
 const express = require("express");
-const Vault = require("../models/Vault");
-const Transaction = require("../models/Transaction");
+const Vault = require("../../models/Vault");
+const Transaction = require("../../models/Transaction");
 const router = express.Router();
 
 // 🔒 Deposit

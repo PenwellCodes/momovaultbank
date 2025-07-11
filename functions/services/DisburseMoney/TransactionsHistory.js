@@ -1,4 +1,4 @@
-const Transaction = require('../../../Models/Transaction.js');
+const Transaction = require('../../models/Transaction');
 
 // Function to get all transactions for the authenticated user
 exports.getAllTransactions = async (req, res) => {

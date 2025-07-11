@@ -1,5 +1,5 @@
 
-const transactionService = require('../services/transactionService');
+const transactionService = require('../../services/CollectMoney/transactionService');
 
 async function getUserTransactions(req, res) {
   const { userId } = req.params;

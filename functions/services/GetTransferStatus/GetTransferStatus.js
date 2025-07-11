@@ -1,6 +1,6 @@
 const { momoDisbursementBaseUrl } = require('../../middlewares/momoConfig'); // ✅ Correct import
 const momoTokenManager = require('../../middlewares/TokenManager.js');
-const referenceIdManager = require('../../middlewares/referenceIdManager.js');
+const referenceIdManager = require('../../middlewares/DisbursementReferenceIdManager.js');
 const axios = require('axios');
 
 exports.GetTransferStatus = async function (req, res) {

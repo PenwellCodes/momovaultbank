@@ -1,7 +1,7 @@
-const { momoDisbursementBaseUrl } = require('../../../Middleware/Momo-middlewares/momoConfig.js'); // ✅ FIXED
-const momoTokenManager = require('../../../Middleware/Momo-middlewares/TokenManager.js');
-const referenceIdManager = require('../../../Middleware/Momo-middlewares/referenceIdManager.js');
-const transactionController = require('../Transfer/SaveTransaction.js');
+const { momoDisbursementBaseUrl } = require('../../middlewares/momoConfig.js'); // ✅ FIXED
+const momoTokenManager = require('../../middlewares/TokenManager.js');
+const referenceIdManager = require('../../middlewares/DisbursementReferenceIdManager.js');
+const transactionController = require('./SaveTransaction.js');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 

@@ -1,16 +1,17 @@
-const { momoCollectionBaseUrl } = require('../../middlewares/momoConfig'); // ✅ Correct base URL
-const momoTokenManager = require('../../middlewares/TokenManager'); // ✅ Token manager
-const axios = require('axios');
+const momoTokenManager = require('../../middlewares/TokenManager.js');
+const { momoDisbursementBaseUrl } = require('../../middlewares/momoConfig.js');
 
 exports.BalanceCurrency = async function (req, res) {
-  const momoToken = momoTokenManager.getMomoCollectionToken(); // ✅ Correct token method
+  // Check if disbursement token is available
+  const momoToken = momoTokenManager.getMomoDisbursementToken();
 
   if (!momoToken) {
-    return res.status(401).json({ message: 'Token not available. Please obtain a token first.' });
+    return res.status(401).json({ message: 'Disbursement token not available. Please obtain a token first.' });
   }
 
   try {
-    const response = await axios.get(`${momoCollectionBaseUrl}/v1_0/account/balance`, {
+    const response = await fetch(`${momoDisbursementBaseUrl}/v1_0/account/balance`, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${momoToken}`,
         'X-Target-Environment': process.env.TARGET_ENVIRONMENT,
@@ -19,16 +20,25 @@ exports.BalanceCurrency = async function (req, res) {
       },
     });
 
-    // Return actual balance from MoMo API
-    return res.status(200).json({
-      responseStatus: response.status,
-      balance: response.data, // MoMo returns { availableBalance, currency }
-    });
+    if (response.status === 200) {
+      const data = await response.json(); // Optional: get actual balance
+      res.status(200).json({
+        responseStatus: response.status,
+        balance: data?.availableBalance || "0.00",
+        currency: data?.currency || "EUR"
+      });
+    } else {
+      const responseBody = await response.text();
+      res.json({
+        responseStatus: response.status,
+        responseBody
+      });
+    }
+
+    console.log('Disbursement balance check - status:', response.status);
 
   } catch (error) {
-    console.error("Balance fetch failed:", error.response?.data || error.message);
-    const status = error.response?.status || 500;
-    const message = error.response?.data || 'Internal server error. Please try again.';
-    return res.status(status).json({ error: message });
+    console.error('Disbursement balance check failed:', error);
+    res.status(500).json({ error: 'Internal server error. Please try again.' });
   }
 };

@@ -1,6 +1,6 @@
 
-const Vault = require('../models/Vault');
-const Transaction = require('../models/Transaction');
+const Vault = require('../../models/Vault');
+const Transaction = require('../../models/Transaction');
 const momoApi = require('../utils/momoApi');
 
 const PENALTY_PERCENTAGE = 10;

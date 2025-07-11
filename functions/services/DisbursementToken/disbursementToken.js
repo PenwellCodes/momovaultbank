@@ -1,4 +1,4 @@
-const { momoBaseUrl } = require('../../middlewares/momoConfig');
+const { momoDisbursementBaseUrl } = require('../../middlewares/momoConfig');
 const momoTokenManager = require('../../middlewares/TokenManager');
 
 // Get access token for DISBURSEMENT
@@ -11,7 +11,7 @@ exports.AccessTokenGeneration = async function (req, res) {
     const credentials = `${apiUserId}:${apiKey}`;
     const encodedCredentials = Buffer.from(credentials).toString('base64');
 
-    const response = await fetch(`${momoBaseUrl}/token/`, {
+    const response = await fetch(`${momoDisbursementBaseUrl}/token/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

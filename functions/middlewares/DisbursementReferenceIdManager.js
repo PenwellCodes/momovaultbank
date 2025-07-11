@@ -1,14 +1,15 @@
+
 let disbursementReferenceId = null;
 
-function setDisbursementReferenceId(id) {
+function setReferenceId(id) {
   disbursementReferenceId = id;
 }
 
-function getDisbursementReferenceId() {
+function getReferenceId() {
   return disbursementReferenceId;
 }
 
 module.exports = {
-  setDisbursementReferenceId,
-  getDisbursementReferenceId,
+  setReferenceId,
+  getReferenceId,
 };

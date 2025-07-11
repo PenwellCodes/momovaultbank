@@ -1,13 +1,13 @@
-const { momoCollectionBaseUrl } = require('../middlewares/momoConfig.js'); // ✅ FIXED
-const momoTokenManager = require('../middlewares/TokenManager.js');
-const referenceIdManager = require('../middlewares/referenceManager.js');
+const { momoCollectionBaseUrl } = require('../../middlewares/momoConfig.js'); // ✅ FIXED
+const momoTokenManager = require('../../middlewares/TokenManager.js');
+const referenceIdManager = require('../../middlewares/CollectionReferenceIdManager.js');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 
 // Import models
-const Vault = require('../models/Vault');
-const LockedDeposit = require('../models/LockedDeposit');
-const Transaction = require('../models/Transaction');
+const Vault = require('../../models/Vault');
+const LockedDeposit = require('../../models/LockedDeposit');
+const Transaction = require('../../models/Transaction');
 
 async function ensureMomoToken() {
   let token = momoTokenManager.getMomoCollectionToken(); // ✅ FIXED

@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router(); // ✅ FIXED
-const User = require("../models/User");
-const Vault = require("../models/Vault");
-const Transaction = require("../models/Transaction");
+const User = require("../../models/User");
+const Vault = require("../../models/Vault");
+const Transaction = require("../../models/Transaction");
 
 // 🧠 Fetch all users
 router.get("/users", async (req, res) => {
