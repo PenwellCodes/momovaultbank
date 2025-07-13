@@ -77,19 +77,27 @@ Authorization: Bearer <token>
 ### ⚡ Individual Processing
 - **Each deposit is processed independently**
 - **Each deposit gets its own E5 flat fee**
-- **Penalties are calculated per deposit**
-- **24-hour wait period applies to each deposit individually**
+- **No waiting period**: Users can withdraw immediately after deposit
+- **No waiting period - immediate withdrawal allowed**
+- **Tiered penalty system based on lock period**
 
 ### 💰 Fee Structure (Per Deposit)
 1. **Flat Fee**: E5 charged on EACH deposit withdrawal
-2. **Early Withdrawal Penalty**: 10% of individual deposit amount (only for 1-3 day lock periods)
-3. **Net Amount**: `Original Amount - Penalty - Flat Fee`
+2. **Tiered Early Withdrawal Penalties**:
+   - 1-3 days: 10%
+   - 4-7 days: 7.5%
+   - 8-14 days: 5%
+   - 15+ days: 2.5%
+   - **1-3 days**: 10% of deposit amount
+   - **4-7 days**: 7.5% of deposit amount
+   - **8-14 days**: 5% of deposit amount
+   - **15+ days**: 2.5% of deposit amount
+3. **No penalty**: Only after lock period maturity
 
 ### 🔒 Validation Rules
 - User must select specific deposit IDs to withdraw
 - Each deposit must be owned by the authenticated user
 - Each deposit must be in "locked" status
-- Each deposit must have passed the 24-hour minimum wait period
 - Net amount after fees/penalties must be positive
 
 ### 📊 Transaction Recording
@@ -117,22 +125,21 @@ POST /api/withdraw
 
 ### Test Multiple Deposit Types
 1. **Create deposits with different lock periods**:
-   - Deposit 1: E100 for 1 day (early withdrawal penalty applies)
-   - Deposit 2: E200 for 7 days (no penalty after maturity)
-   - Deposit 3: E150 for 30 days (no penalty for long-term locks)
+   - Deposit 1: E100 for 1 day (10% penalty if early)
+   - Deposit 2: E200 for 7 days (7.5% penalty if early)
+   - Deposit 3: E150 for 30 days (2.5% penalty if early)
 
 2. **Test withdrawal scenarios**:
-   - Withdraw from 1-day deposit early (penalty + fee)
+   - Withdraw from 1-day deposit early (10% penalty + fee)
    - Withdraw from 7-day deposit after maturity (fee only)
-   - Withdraw from multiple deposits simultaneously
+   - Withdraw from 30-day deposit early (2.5% penalty + fee)
 
 ## 🚨 ERROR SCENARIOS
 
 1. **Invalid Deposit IDs**: Non-existent or already withdrawn deposits
 2. **Unauthorized Access**: Trying to withdraw another user's deposits
-3. **Too Early**: Attempting withdrawal before 24-hour minimum
-4. **Insufficient Net Amount**: When fees/penalties exceed deposit amount
-5. **Mixed Ownership**: Including deposits from different users
+3. **Insufficient Net Amount**: When fees/penalties exceed deposit amount
+4. **Mixed Ownership**: Including deposits from different users
 
 ## 📈 BENEFITS
 
@@ -140,6 +147,8 @@ POST /api/withdraw
 - **Transparency**: Clear breakdown of fees per deposit
 - **Flexibility**: Choose which specific deposits to withdraw
 - **Fairness**: Each deposit treated according to its own terms
+- **Immediate Access**: No waiting period restrictions
+- **Tiered Penalties**: Lower penalties for longer-term deposits
 
 ### For System
 - **Accurate Accounting**: Precise tracking of fees and penalties

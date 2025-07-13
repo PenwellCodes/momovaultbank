@@ -44,12 +44,24 @@ router.get("/vault-info", authenticateMiddleware, async (req, res) => {
       
       totalLockedAmount += deposit.amount;
       
-      const canWithdraw = hoursSinceDeposit >= 24;
+      const canWithdraw = true; // No 24-hour restriction
       if (canWithdraw) withdrawableDepositsCount++;
       
       let penalty = 0;
-      if (canWithdraw && isEarlyWithdrawal && deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
-        penalty = deposit.amount * 0.1;
+      if (isEarlyWithdrawal) {
+        let penaltyRate = 0;
+        
+        if (deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
+          penaltyRate = 0.10; // 10%
+        } else if (deposit.lockPeriodInDays >= 4 && deposit.lockPeriodInDays <= 7) {
+          penaltyRate = 0.075; // 7.5%
+        } else if (deposit.lockPeriodInDays >= 8 && deposit.lockPeriodInDays <= 14) {
+          penaltyRate = 0.05; // 5%
+        } else if (deposit.lockPeriodInDays >= 15) {
+          penaltyRate = 0.025; // 2.5%
+        }
+        
+        penalty = deposit.amount * penaltyRate;
       }
       
       const flatFee = 5;
@@ -65,8 +77,8 @@ router.get("/vault-info", authenticateMiddleware, async (req, res) => {
         penalty,
         flatFee,
         netAmount,
-        hoursUntilEligible: canWithdraw ? 0 : Math.ceil(24 - hoursSinceDeposit),
-        reason: canWithdraw ? null : "Must wait 24 hours after deposit"
+        hoursUntilEligible: 0, // No waiting period
+        reason: null // Can always withdraw
       };
     });
 
@@ -110,14 +122,25 @@ router.get("/withdrawal-eligibility", authenticateMiddleware, async (req, res) =
       const hoursSinceDeposit = (now - depositTime) / (1000 * 60 * 60);
       const lockPeriodInHours = deposit.lockPeriodInDays * 24;
       
-      const canWithdraw = hoursSinceDeposit >= 24;
+      const canWithdraw = true; // No 24-hour restriction
       const isEarlyWithdrawal = hoursSinceDeposit < lockPeriodInHours;
-      const hoursUntilEligible = Math.max(0, 24 - hoursSinceDeposit);
       const hoursUntilMaturity = Math.max(0, lockPeriodInHours - hoursSinceDeposit);
       
       let penalty = 0;
-      if (canWithdraw && isEarlyWithdrawal && deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
-        penalty = deposit.amount * 0.1;
+      if (isEarlyWithdrawal) {
+        let penaltyRate = 0;
+        
+        if (deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
+          penaltyRate = 0.10; // 10%
+        } else if (deposit.lockPeriodInDays >= 4 && deposit.lockPeriodInDays <= 7) {
+          penaltyRate = 0.075; // 7.5%
+        } else if (deposit.lockPeriodInDays >= 8 && deposit.lockPeriodInDays <= 14) {
+          penaltyRate = 0.05; // 5%
+        } else if (deposit.lockPeriodInDays >= 15) {
+          penaltyRate = 0.025; // 2.5%
+        }
+        
+        penalty = deposit.amount * penaltyRate;
       }
 
       const flatFee = 5; // Individual E5 fee per deposit
@@ -132,7 +155,6 @@ router.get("/withdrawal-eligibility", authenticateMiddleware, async (req, res) =
         penalty,
         flatFee,
         netAmount,
-        hoursUntilEligible: Math.ceil(hoursUntilEligible),
         hoursUntilMaturity: Math.ceil(hoursUntilMaturity)
       };
     });
