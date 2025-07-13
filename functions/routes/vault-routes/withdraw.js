@@ -99,6 +99,9 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
       // Must wait at least 24 hours before any withdrawal
       if (hoursSinceDeposit < 24) {
         return res.status(400).json({ 
+        }
+        )
+      }
       let penalty = 0;
       const flatFee = 5; // E5 flat fee per deposit
       
