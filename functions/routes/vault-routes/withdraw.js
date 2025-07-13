@@ -40,17 +40,17 @@ async function ensureDisbursementToken() {
   return token;
 }
 
-// 💸 Withdraw with proper validation and penalties
+// 💸 Withdraw from specific locked deposits
 router.post("/withdraw", authenticateMiddleware, async (req, res) => {
   try {
     const userId = req.user._id;
-    const { phoneNumber, amount } = req.body;
+    const { phoneNumber, depositIds } = req.body; // Changed to accept array of deposit IDs
 
     // Validate input
-    if (!phoneNumber || !amount || amount <= 0) {
+    if (!phoneNumber || !depositIds || !Array.isArray(depositIds) || depositIds.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        message: "Valid phone number and amount are required" 
+        message: "Valid phone number and array of deposit IDs are required" 
       });
     }
 
@@ -64,89 +64,86 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
     }
     const formattedPhone = phoneValidation.formatted;
 
-    // Get user's vault
-    const vault = await Vault.findOne({ userId });
-    if (!vault) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Vault not found" 
-      });
-    }
-
-    // Get all locked deposits for this user
+    // Get the specific locked deposits
     const lockedDeposits = await LockedDeposit.find({ 
+      _id: { $in: depositIds },
       userId, 
       status: "locked" 
-    }).sort({ createdAt: 1 }); // Oldest first
+    });
 
     if (lockedDeposits.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        message: "No locked deposits available for withdrawal" 
+        message: "No valid locked deposits found for withdrawal" 
+      });
+    }
+
+    if (lockedDeposits.length !== depositIds.length) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Some deposit IDs are invalid or already withdrawn" 
       });
     }
 
     const now = new Date();
-    let totalAvailable = 0;
+    const withdrawalDetails = [];
+    let totalWithdrawalAmount = 0;
+    let totalFees = 0;
     let totalPenalties = 0;
-    const withdrawableDeposits = [];
 
-    // Check each deposit for availability and calculate penalties
+    // Process each deposit individually
     for (const deposit of lockedDeposits) {
       const depositTime = new Date(deposit.createdAt);
       const hoursSinceDeposit = (now - depositTime) / (1000 * 60 * 60);
       
       // Must wait at least 24 hours before any withdrawal
       if (hoursSinceDeposit < 24) {
-        continue;
+        return res.status(400).json({ 
+          success: false, 
+          message: `Deposit ${deposit._id} cannot be withdrawn yet. Please wait at least 24 hours after deposit.` 
+        });
       }
 
       const lockPeriodInHours = deposit.lockPeriodInDays * 24;
       const isEarlyWithdrawal = hoursSinceDeposit < lockPeriodInHours;
       
       let penalty = 0;
+      const flatFee = 5; // E5 flat fee per deposit
       
       // Calculate penalty for early withdrawal (1-3 day locks only)
       if (isEarlyWithdrawal && deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
         penalty = deposit.amount * 0.1; // 10% penalty
       }
 
-      withdrawableDeposits.push({
+      const netAmount = deposit.amount - penalty - flatFee;
+      
+      if (netAmount <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Deposit ${deposit._id} has insufficient funds after fees and penalties` 
+        });
+      }
+
+      withdrawalDetails.push({
         deposit,
         penalty,
+        flatFee,
+        netAmount,
         isEarly: isEarlyWithdrawal
       });
 
-      totalAvailable += deposit.amount;
+      totalWithdrawalAmount += netAmount;
+      totalFees += flatFee;
       totalPenalties += penalty;
-    }
-
-    if (withdrawableDeposits.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "No deposits available for withdrawal yet. Please wait at least 24 hours after deposit." 
-      });
-    }
-
-    // Check if user has enough available funds
-    const netAvailable = totalAvailable - totalPenalties;
-    const flatFee = 5; // E5 flat fee for all withdrawals
-    const totalRequired = parseFloat(amount) + flatFee;
-
-    if (netAvailable < totalRequired) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Insufficient funds. Available: E${netAvailable.toFixed(2)}, Required: E${totalRequired.toFixed(2)} (including E5 fee)` 
-      });
     }
 
     // Generate disbursement token
     const disbursementToken = await ensureDisbursementToken();
 
-    // Prepare disbursement request
+    // Prepare disbursement request for the total net amount
     const referenceId = uuidv4();
     const disbursementBody = {
-      amount: String(amount),
+      amount: String(totalWithdrawalAmount),
       currency: 'EUR',
       externalId: uuidv4().replace(/-/g, '').slice(0, 24),
       payee: {
@@ -154,7 +151,7 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
         partyId: formattedPhone,
       },
       payerMessage: "Withdrawal from MoMoVault",
-      payeeNote: "Vault funds withdrawal",
+      payeeNote: "Individual deposit withdrawals",
     };
 
     // Execute disbursement
@@ -181,62 +178,81 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
       });
     }
 
-    // Update deposits and vault
-    let amountToDeduct = parseFloat(amount) + flatFee + totalPenalties;
+    // Update each deposit and create individual transactions
+    const processedDeposits = [];
     
-    for (const { deposit } of withdrawableDeposits) {
-      if (amountToDeduct <= 0) break;
+    for (const detail of withdrawalDetails) {
+      const { deposit, penalty, flatFee, netAmount, isEarly } = detail;
       
-      deposit.status = "unlocked";
+      // Update deposit status
+      deposit.status = isEarly ? "withdrawn-early" : "unlocked";
+      deposit.penaltyApplied = penalty > 0;
       await deposit.save();
-    }
 
-    // Update vault balance
-    vault.balance -= amountToDeduct;
-    await vault.save();
+      // Record individual withdrawal transaction
+      await Transaction.create({
+        userId,
+        type: "withdrawal",
+        amount: netAmount,
+        penaltyFee: penalty,
+        momoTransactionId: referenceId,
+        relatedLockedDepositIndex: deposit._id, // Store deposit ID instead of index
+        createdAt: new Date()
+      });
 
-    // Record withdrawal transaction
-    await Transaction.create({
-      userId,
-      type: "withdrawal",
-      amount: parseFloat(amount),
-      penaltyFee: totalPenalties,
-      momoTransactionId: referenceId,
-      createdAt: new Date()
-    });
-
-    // Record flat fee transaction
-    await Transaction.create({
-      userId,
-      type: "penalty",
-      amount: flatFee,
-      penaltyFee: flatFee,
-      momoTransactionId: referenceId,
-      createdAt: new Date()
-    });
-
-    // Record penalty transactions if any
-    if (totalPenalties > 0) {
+      // Record individual flat fee transaction
       await Transaction.create({
         userId,
         type: "penalty",
-        amount: totalPenalties,
-        penaltyFee: totalPenalties,
+        amount: flatFee,
+        penaltyFee: flatFee,
         momoTransactionId: referenceId,
+        relatedLockedDepositIndex: deposit._id,
         createdAt: new Date()
       });
+
+      // Record individual penalty transaction if any
+      if (penalty > 0) {
+        await Transaction.create({
+          userId,
+          type: "penalty",
+          amount: penalty,
+          penaltyFee: penalty,
+          momoTransactionId: referenceId,
+          relatedLockedDepositIndex: deposit._id,
+          createdAt: new Date()
+        });
+      }
+
+      processedDeposits.push({
+        depositId: deposit._id,
+        originalAmount: deposit.amount,
+        penalty,
+        flatFee,
+        netAmount,
+        isEarlyWithdrawal: isEarly,
+        lockPeriodInDays: deposit.lockPeriodInDays
+      });
+    }
+
+    // Update vault balance (subtract the total original amounts)
+    const vault = await Vault.findOne({ userId });
+    if (vault) {
+      const totalOriginalAmount = lockedDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
+      vault.balance -= totalOriginalAmount;
+      await vault.save();
     }
 
     res.status(200).json({
       success: true,
-      message: "Withdrawal processed successfully",
+      message: "Individual deposit withdrawals processed successfully",
       data: {
-        withdrawnAmount: parseFloat(amount),
-        flatFee: flatFee,
-        earlyWithdrawalPenalty: totalPenalties,
-        totalDeducted: amountToDeduct,
+        totalWithdrawn: totalWithdrawalAmount,
+        totalFees: totalFees,
+        totalPenalties: totalPenalties,
         referenceId: referenceId,
-        remainingBalance: vault.balance
+        processedDeposits: processedDeposits,
+        depositsProcessed: processedDeposits.length
       }
     });
 
@@ -245,6 +261,64 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Withdrawal processing failed",
+      error: error.message
+    });
+  }
+});
+
+// 📋 Get withdrawable deposits for user
+router.get("/withdrawable-deposits", authenticateMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const lockedDeposits = await LockedDeposit.find({ 
+      userId, 
+      status: "locked" 
+    }).sort({ createdAt: 1 });
+
+    const now = new Date();
+    const withdrawableDeposits = lockedDeposits.map(deposit => {
+      const depositTime = new Date(deposit.createdAt);
+      const hoursSinceDeposit = (now - depositTime) / (1000 * 60 * 60);
+      const lockPeriodInHours = deposit.lockPeriodInDays * 24;
+      
+      const canWithdraw = hoursSinceDeposit >= 24;
+      const isEarlyWithdrawal = hoursSinceDeposit < lockPeriodInHours;
+      const hoursUntilEligible = Math.max(0, 24 - hoursSinceDeposit);
+      const hoursUntilMaturity = Math.max(0, lockPeriodInHours - hoursSinceDeposit);
+      
+      let penalty = 0;
+      if (canWithdraw && isEarlyWithdrawal && deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
+        penalty = deposit.amount * 0.1;
+      }
+
+      const flatFee = 5;
+      const netAmount = Math.max(0, deposit.amount - penalty - flatFee);
+
+      return {
+        depositId: deposit._id,
+        amount: deposit.amount,
+        lockPeriodInDays: deposit.lockPeriodInDays,
+        depositDate: deposit.createdAt,
+        canWithdraw,
+        isEarlyWithdrawal,
+        penalty,
+        flatFee,
+        netAmount,
+        hoursUntilEligible: Math.ceil(hoursUntilEligible),
+        hoursUntilMaturity: Math.ceil(hoursUntilMaturity)
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: withdrawableDeposits
+    });
+
+  } catch (error) {
+    console.error("Withdrawable deposits error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch withdrawable deposits",
       error: error.message
     });
   }

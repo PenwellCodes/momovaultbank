@@ -21,34 +21,54 @@ router.get("/vault-info", authenticateMiddleware, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(10);
 
-    // Calculate available withdrawal amount
+    // Calculate individual deposit information
     const now = new Date();
-    let availableForWithdrawal = 0;
-    let totalPenalties = 0;
+    let totalLockedAmount = 0;
+    let withdrawableDepositsCount = 0;
     
-    const withdrawableDeposits = lockedDeposits.filter(deposit => {
-      if (deposit.status !== "locked") return false;
+    const depositSummary = lockedDeposits.map(deposit => {
+      if (deposit.status !== "locked") {
+        return {
+          depositId: deposit._id,
+          amount: deposit.amount,
+          status: deposit.status,
+          canWithdraw: false,
+          reason: "Already withdrawn"
+        };
+      }
       
       const depositTime = new Date(deposit.createdAt);
       const hoursSinceDeposit = (now - depositTime) / (1000 * 60 * 60);
-      
-      // Must wait at least 24 hours
-      if (hoursSinceDeposit < 24) return false;
-      
       const lockPeriodInHours = deposit.lockPeriodInDays * 24;
       const isEarlyWithdrawal = hoursSinceDeposit < lockPeriodInHours;
       
-      // Calculate penalty for early withdrawal (1-3 day locks only)
-      if (isEarlyWithdrawal && deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
-        totalPenalties += deposit.amount * 0.1; // 10% penalty
+      totalLockedAmount += deposit.amount;
+      
+      const canWithdraw = hoursSinceDeposit >= 24;
+      if (canWithdraw) withdrawableDepositsCount++;
+      
+      let penalty = 0;
+      if (canWithdraw && isEarlyWithdrawal && deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
+        penalty = deposit.amount * 0.1;
       }
       
-      availableForWithdrawal += deposit.amount;
-      return true;
+      const flatFee = 5;
+      const netAmount = Math.max(0, deposit.amount - penalty - flatFee);
+      
+      return {
+        depositId: deposit._id,
+        amount: deposit.amount,
+        lockPeriodInDays: deposit.lockPeriodInDays,
+        status: deposit.status,
+        canWithdraw,
+        isEarlyWithdrawal,
+        penalty,
+        flatFee,
+        netAmount,
+        hoursUntilEligible: canWithdraw ? 0 : Math.ceil(24 - hoursSinceDeposit),
+        reason: canWithdraw ? null : "Must wait 24 hours after deposit"
+      };
     });
-
-    // Subtract penalties and flat fee from available amount
-    const netAvailable = Math.max(0, availableForWithdrawal - totalPenalties - 5); // E5 flat fee
 
     res.status(200).json({
       success: true,
@@ -56,12 +76,11 @@ router.get("/vault-info", authenticateMiddleware, async (req, res) => {
         vault: vault || { balance: 0, lockedDeposits: [] },
         lockedDeposits,
         recentTransactions: transactions,
-        withdrawalInfo: {
-          totalLocked: availableForWithdrawal,
-          penalties: totalPenalties,
-          flatFee: 5,
-          netAvailable: netAvailable,
-          withdrawableDeposits: withdrawableDeposits.length
+        depositSummary: {
+          totalLockedAmount,
+          totalDeposits: lockedDeposits.filter(d => d.status === "locked").length,
+          withdrawableDepositsCount,
+          individualDeposits: depositSummary
         }
       }
     });
@@ -101,6 +120,8 @@ router.get("/withdrawal-eligibility", authenticateMiddleware, async (req, res) =
         penalty = deposit.amount * 0.1;
       }
 
+      const flatFee = 5; // Individual E5 fee per deposit
+      const netAmount = Math.max(0, deposit.amount - penalty - flatFee);
       return {
         depositId: deposit._id,
         amount: deposit.amount,
@@ -109,9 +130,10 @@ router.get("/withdrawal-eligibility", authenticateMiddleware, async (req, res) =
         canWithdraw,
         isEarlyWithdrawal,
         penalty,
+        flatFee,
+        netAmount,
         hoursUntilEligible: Math.ceil(hoursUntilEligible),
-        hoursUntilMaturity: Math.ceil(hoursUntilMaturity),
-        netAmount: deposit.amount - penalty
+        hoursUntilMaturity: Math.ceil(hoursUntilMaturity)
       };
     });
 

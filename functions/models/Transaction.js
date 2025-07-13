@@ -8,7 +8,7 @@ const transactionSchema = new mongoose.Schema({
   lockPeriodInDays: Number,
   penaltyFee: Number,
   momoTransactionId: String,
-  relatedLockedDepositIndex: Number,
+  relatedLockedDepositIndex: { type: mongoose.Schema.Types.Mixed }, // Can be Number (old) or ObjectId (new)
   createdAt: { type: Date, default: Date.now },
 });
 
