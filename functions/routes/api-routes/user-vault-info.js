@@ -49,19 +49,7 @@ router.get("/vault-info", authenticateMiddleware, async (req, res) => {
       
       let penalty = 0;
       if (isEarlyWithdrawal) {
-        let penaltyRate = 0;
-        
-        if (deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
-          penaltyRate = 0.10; // 10%
-        } else if (deposit.lockPeriodInDays >= 4 && deposit.lockPeriodInDays <= 7) {
-          penaltyRate = 0.075; // 7.5%
-        } else if (deposit.lockPeriodInDays >= 8 && deposit.lockPeriodInDays <= 14) {
-          penaltyRate = 0.05; // 5%
-        } else if (deposit.lockPeriodInDays >= 15) {
-          penaltyRate = 0.025; // 2.5%
-        }
-        
-        penalty = deposit.amount * penaltyRate;
+        penalty = deposit.amount * 0.10; // Flat 10% penalty for all early withdrawals
       }
       
       const flatFee = 5;
@@ -128,19 +116,7 @@ router.get("/withdrawal-eligibility", authenticateMiddleware, async (req, res) =
       
       let penalty = 0;
       if (isEarlyWithdrawal) {
-        let penaltyRate = 0;
-        
-        if (deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
-          penaltyRate = 0.10; // 10%
-        } else if (deposit.lockPeriodInDays >= 4 && deposit.lockPeriodInDays <= 7) {
-          penaltyRate = 0.075; // 7.5%
-        } else if (deposit.lockPeriodInDays >= 8 && deposit.lockPeriodInDays <= 14) {
-          penaltyRate = 0.05; // 5%
-        } else if (deposit.lockPeriodInDays >= 15) {
-          penaltyRate = 0.025; // 2.5%
-        }
-        
-        penalty = deposit.amount * penaltyRate;
+        penalty = deposit.amount * 0.10; // Flat 10% penalty for all early withdrawals
       }
 
       const flatFee = 5; // Individual E5 fee per deposit

@@ -83,15 +83,7 @@ Authorization: Bearer <token>
 
 ### 💰 Fee Structure (Per Deposit)
 1. **Flat Fee**: E5 charged on EACH deposit withdrawal
-2. **Tiered Early Withdrawal Penalties**:
-   - 1-3 days: 10%
-   - 4-7 days: 7.5%
-   - 8-14 days: 5%
-   - 15+ days: 2.5%
-   - **1-3 days**: 10% of deposit amount
-   - **4-7 days**: 7.5% of deposit amount
-   - **8-14 days**: 5% of deposit amount
-   - **15+ days**: 2.5% of deposit amount
+2. **Early Withdrawal Penalty**: Flat 10% of deposit amount for ALL lock periods
 3. **No penalty**: Only after lock period maturity
 
 ### 🔒 Validation Rules
@@ -131,8 +123,9 @@ POST /api/withdraw
 
 2. **Test withdrawal scenarios**:
    - Withdraw from 1-day deposit early (10% penalty + fee)
-   - Withdraw from 7-day deposit after maturity (fee only)
-   - Withdraw from 30-day deposit early (2.5% penalty + fee)
+   - Withdraw from 7-day deposit early (10% penalty + fee)
+   - Withdraw from 30-day deposit early (10% penalty + fee)
+   - Withdraw from any deposit after maturity (fee only)
 
 ## 🚨 ERROR SCENARIOS
 
@@ -148,7 +141,45 @@ POST /api/withdraw
 - **Flexibility**: Choose which specific deposits to withdraw
 - **Fairness**: Each deposit treated according to its own terms
 - **Immediate Access**: No waiting period restrictions
-- **Tiered Penalties**: Lower penalties for longer-term deposits
+- **Simple Penalties**: Flat 10% penalty for all early withdrawals
+
+## 📊 System Revenue Tracking
+
+### New Admin Endpoint
+```
+GET /api/admin/revenue
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "revenueBreakdown": {
+      "totalRevenue": 1250,
+      "flatFeesRevenue": 500,
+      "earlyWithdrawalPenaltiesRevenue": 750,
+      "flatFeesCount": 100,
+      "earlyWithdrawalPenaltiesCount": 15
+    },
+    "systemStats": {
+      "totalUsers": 50,
+      "totalDeposits": 200,
+      "totalWithdrawals": 100,
+      "totalDepositsAmount": 50000,
+      "totalWithdrawalsAmount": 25000,
+      "currentLockedFunds": 25000,
+      "netUserFunds": 25000,
+      "systemProfit": 1250
+    },
+    "summary": {
+      "totalSystemRevenue": 1250,
+      "totalUserFunds": 25000,
+      "systemProfitMargin": "2.50%"
+    }
+  }
+}
+```
 
 ### For System
 - **Accurate Accounting**: Precise tracking of fees and penalties

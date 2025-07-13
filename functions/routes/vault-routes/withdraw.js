@@ -96,30 +96,12 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
       const depositTime = new Date(deposit.createdAt);
       const hoursSinceDeposit = (now - depositTime) / (1000 * 60 * 60);
       
-      // Must wait at least 24 hours before any withdrawal
-      if (hoursSinceDeposit < 24) {
-        return res.status(400).json({ 
-        }
-        )
-      }
       let penalty = 0;
       const flatFee = 5; // E5 flat fee per deposit
       
-      // Calculate tiered penalty for early withdrawal
+      // Calculate flat 10% penalty for early withdrawal
       if (isEarlyWithdrawal) {
-        let penaltyRate = 0;
-        
-        if (deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
-          penaltyRate = 0.10; // 10%
-        } else if (deposit.lockPeriodInDays >= 4 && deposit.lockPeriodInDays <= 7) {
-          penaltyRate = 0.075; // 7.5%
-        } else if (deposit.lockPeriodInDays >= 8 && deposit.lockPeriodInDays <= 14) {
-          penaltyRate = 0.05; // 5%
-        } else if (deposit.lockPeriodInDays >= 15) {
-          penaltyRate = 0.025; // 2.5%
-        }
-        
-        penalty = deposit.amount * penaltyRate;
+        penalty = deposit.amount * 0.10; // Flat 10% penalty for all lock periods
       }
 
       const netAmount = deposit.amount - penalty - flatFee;
@@ -294,19 +276,7 @@ router.get("/withdrawable-deposits", authenticateMiddleware, async (req, res) =>
       
       let penalty = 0;
       if (isEarlyWithdrawal) {
-        let penaltyRate = 0;
-        
-        if (deposit.lockPeriodInDays >= 1 && deposit.lockPeriodInDays <= 3) {
-          penaltyRate = 0.10; // 10%
-        } else if (deposit.lockPeriodInDays >= 4 && deposit.lockPeriodInDays <= 7) {
-          penaltyRate = 0.075; // 7.5%
-        } else if (deposit.lockPeriodInDays >= 8 && deposit.lockPeriodInDays <= 14) {
-          penaltyRate = 0.05; // 5%
-        } else if (deposit.lockPeriodInDays >= 15) {
-          penaltyRate = 0.025; // 2.5%
-        }
-        
-        penalty = deposit.amount * penaltyRate;
+        penalty = deposit.amount * 0.10; // Flat 10% penalty for all lock periods
       }
 
       const flatFee = 5;
