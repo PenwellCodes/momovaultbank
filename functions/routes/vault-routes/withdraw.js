@@ -43,48 +43,35 @@ async function ensureDisbursementToken() {
 // 💸 Withdraw from specific locked deposits
 router.post("/withdraw", authenticateMiddleware, async (req, res) => {
   try {
-    console.log("=== WITHDRAWAL REQUEST START ===");
-    console.log("Request body:", req.body);
-    console.log("User:", req.user);
-    
     const userId = req.user._id;
     const { phoneNumber, depositIds } = req.body; // Changed to accept array of deposit IDs
 
     // Validate input
     if (!phoneNumber || !depositIds || !Array.isArray(depositIds) || depositIds.length === 0) {
-      console.log("Validation failed - missing required fields");
       return res.status(400).json({ 
         success: false, 
         message: "Valid phone number and array of deposit IDs are required" 
       });
     }
 
-    console.log("Input validation passed");
-    
     // Validate and format phone number
     const phoneValidation = validateAndFormatPhone(phoneNumber);
     if (!phoneValidation.isValid) {
-      console.log("Phone validation failed:", phoneValidation.error);
       return res.status(400).json({
         success: false,
         message: `Invalid phone number: ${phoneValidation.error}`
       });
     }
     const formattedPhone = phoneValidation.formatted;
-    console.log("Phone formatted to:", formattedPhone);
 
     // Get the specific locked deposits
-    console.log("Fetching locked deposits for IDs:", depositIds);
     const lockedDeposits = await LockedDeposit.find({ 
       _id: { $in: depositIds },
       userId, 
       status: "locked" 
     });
 
-    console.log("Found locked deposits:", lockedDeposits.length);
-    
     if (lockedDeposits.length === 0) {
-      console.log("No valid locked deposits found");
       return res.status(400).json({ 
         success: false, 
         message: "No valid locked deposits found for withdrawal" 
@@ -92,7 +79,6 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
     }
 
     if (lockedDeposits.length !== depositIds.length) {
-      console.log("Deposit count mismatch - requested:", depositIds.length, "found:", lockedDeposits.length);
       return res.status(400).json({ 
         success: false, 
         message: "Some deposit IDs are invalid or already withdrawn" 
@@ -105,14 +91,10 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
     let totalFees = 0;
     let totalPenalties = 0;
 
-    console.log("Processing deposits...");
-    
     // Process each deposit individually
     for (const deposit of lockedDeposits) {
       const depositTime = new Date(deposit.createdAt);
       const hoursSinceDeposit = (now - depositTime) / (1000 * 60 * 60);
-      const lockPeriodInHours = deposit.lockPeriodInDays * 24;
-      const isEarlyWithdrawal = hoursSinceDeposit < lockPeriodInHours;
       
       let penalty = 0;
       const flatFee = 5; // E5 flat fee per deposit
@@ -124,10 +106,7 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
 
       const netAmount = deposit.amount - penalty - flatFee;
       
-      console.log(`Deposit ${deposit._id}: amount=${deposit.amount}, penalty=${penalty}, fee=${flatFee}, net=${netAmount}`);
-      
       if (netAmount <= 0) {
-        console.log(`Insufficient funds for deposit ${deposit._id}`);
         return res.status(400).json({ 
           success: false, 
           message: `Deposit ${deposit._id} has insufficient funds after fees and penalties` 
@@ -147,12 +126,8 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
       totalPenalties += penalty;
     }
 
-    console.log("Total withdrawal amount:", totalWithdrawalAmount);
-    console.log("Generating disbursement token...");
-    
     // Generate disbursement token
     const disbursementToken = await ensureDisbursementToken();
-    console.log("Disbursement token obtained");
 
     // Prepare disbursement request for the total net amount
     const referenceId = uuidv4();
@@ -168,8 +143,6 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
       payeeNote: "Individual deposit withdrawals",
     };
 
-    console.log("Disbursement request:", disbursementBody);
-    
     // Execute disbursement
     const disbursementResponse = await axios.post(
       `${momoDisbursementBaseUrl}/v1_0/transfer`,
@@ -186,11 +159,7 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
       }
     );
 
-    console.log("Disbursement response status:", disbursementResponse.status);
-    console.log("Disbursement response data:", disbursementResponse.data);
-    
     if (disbursementResponse.status !== 202) {
-      console.log("Disbursement failed with status:", disbursementResponse.status);
       return res.status(disbursementResponse.status).json({
         success: false,
         message: 'Disbursement failed',
@@ -198,8 +167,6 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
       });
     }
 
-    console.log("Disbursement successful, updating deposits and creating transactions...");
-    
     // Update each deposit and create individual transactions
     const processedDeposits = [];
     
@@ -263,11 +230,8 @@ router.post("/withdraw", authenticateMiddleware, async (req, res) => {
       const totalOriginalAmount = lockedDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
       vault.balance -= totalOriginalAmount;
       await vault.save();
-      console.log("Vault balance updated");
     }
 
-    console.log("=== WITHDRAWAL SUCCESS ===");
-    
     res.status(200).json({
       success: true,
       message: "Individual deposit withdrawals processed successfully",
