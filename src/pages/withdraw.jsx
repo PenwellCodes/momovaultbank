@@ -130,11 +130,25 @@ export default function WithdrawPage() {
     setMessage(null);
 
     try {
+      console.log("Starting withdrawal process...");
+      console.log("Selected deposits:", selectedDeposits);
+      console.log("Phone number:", formData.phoneNumber);
+      
+      // First, let's verify the deposits are still valid
+      console.log("Fetching latest deposit info...");
+      await fetchWithdrawableDeposits();
+      
       // Process individual deposit withdrawal
-      const response = await axiosInstance.post("/api/withdraw", {
+      const withdrawalPayload = {
         phoneNumber: formData.phoneNumber,
         depositIds: selectedDeposits
-      });
+      };
+      
+      console.log("Sending withdrawal request:", withdrawalPayload);
+      
+      const response = await axiosInstance.post("/api/withdraw", withdrawalPayload);
+      
+      console.log("Withdrawal response:", response.data);
 
       if (response.data.success) {
         const { data } = response.data;
@@ -153,12 +167,23 @@ export default function WithdrawPage() {
         setSelectedDeposits([]);
         fetchVaultInfo();
         fetchWithdrawableDeposits();
+      } else {
+        console.error("Withdrawal failed - backend returned success: false");
+        setMessage({ 
+          type: "error", 
+          text: response.data.message || "Withdrawal failed - unknown error" 
+        });
       }
     } catch (error) {
       console.error("Withdrawal error:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      
       const errorMessage = error.response?.data?.message || 
                           error.response?.data?.error || 
-                          "Withdrawal failed. Please try again.";
+                          error.response?.data?.details ||
+                          `Withdrawal processing failed: ${error.message}`;
+                          
       setMessage({ type: "error", text: errorMessage });
     } finally {
       setLoading(false);
