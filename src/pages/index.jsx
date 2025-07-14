@@ -49,6 +49,15 @@ export default function AdminDashboard() {
         setRevenueData(revenueRes.data.data || null);
       } catch (err) {
         console.error("Admin fetch error:", err?.response?.data || err.message);
+        // Handle authentication errors
+        if (err.response?.status === 401) {
+          // Will be handled by axios interceptor
+          return;
+        }
+        setMessage({
+          type: "error",
+          text: "Failed to load admin data. Please refresh the page."
+        });
       } finally {
         setLoading(false);
       }
@@ -74,6 +83,9 @@ export default function AdminDashboard() {
       .filter(t => t.type === 'penalty')
       .reduce((sum, t) => sum + (t.amount || 0), 0),
   };
+
+  // Add error message state
+  const [message, setMessage] = useState(null);
 
   const totalUserPages = Math.ceil(users.length / usersPerPage);
   const paginatedUsers = users.slice(
@@ -180,11 +192,25 @@ export default function AdminDashboard() {
         <main className="flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-3xl font-bold text-blue-600">Admin Dashboard</h2>
-            <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <button 
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
               <FaDownload />
-              Export Data
+              Refresh Data
             </button>
           </div>
+
+          {/* Error Message Display */}
+          {message && (
+            <div className={`mb-6 p-4 rounded-lg ${
+              message.type === 'error' 
+                ? 'bg-red-50 text-red-700 border border-red-200' 
+                : 'bg-green-50 text-green-700 border border-green-200'
+            }`}>
+              {message.text}
+            </div>
+          )}
 
           {/* Overview Tab */}
           {activeTab === 'overview' && (

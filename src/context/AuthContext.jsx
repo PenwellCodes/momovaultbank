@@ -26,21 +26,28 @@ export const AuthProvider = ({ children }) => {
       const userData = localStorage.getItem('user');
       
       if (token && userData) {
-        // Verify token with backend
+        // Verify token with backend using your auth route
         const response = await axiosInstance.get('/auth/check-auth');
         if (response.data.success) {
-          setUser(JSON.parse(userData));
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
           setIsAuthenticated(true);
+          // Make sure userId is stored
+          if (parsedUser._id) {
+            localStorage.setItem('userId', parsedUser._id);
+          }
         } else {
           // Token invalid, clear storage
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          localStorage.removeItem('userId');
         }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('userId');
     } finally {
       setLoading(false);
     }
@@ -78,7 +85,15 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await axiosInstance.post('/auth/register', userData);
+      // Make sure to include phoneNumber in registration
+      const response = await axiosInstance.post('/auth/register', {
+        userName: userData.userName,
+        userEmail: userData.userEmail,
+        password: userData.password,
+        phoneNumber: userData.phoneNumber,
+        role: userData.role || 'user'
+      });
+      
       return { 
         success: response.data.success, 
         message: response.data.message 

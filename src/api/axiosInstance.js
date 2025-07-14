@@ -3,8 +3,8 @@ import axios from 'axios';
 // Create axios instance with base configuration
 const axiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === 'production' 
-    ? 'https://your-firebase-function-url.cloudfunctions.net/api'  // Replace with your actual Firebase function URL
-    : 'http://localhost:5000/api', // Local Firebase emulator
+    ? 'https://esavior-332e9.cloudfunctions.net/api'  // Your Firebase function URL
+    : 'http://localhost:5000/esavior-332e9/us-central1/api', // Local Firebase emulator
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -33,6 +33,7 @@ axiosInstance.interceptors.response.use(
       // Clear invalid token and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('userId');
       window.location.href = '/auth/login';
     }
     return Promise.reject(error);
